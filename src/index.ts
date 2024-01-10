@@ -5,6 +5,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import constants from './constants';
 
 dotenv.config();
 
@@ -15,11 +16,11 @@ app.use(cors());
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-const DOLPIN_API_URL: string = process.env.DOLPIN_API_URL || '';
-const CLOUDINARY_API_URL: string = process.env.CLOUDINARY_API_URL || '';
-const PINATA_API_URL: string = process.env.PINATA_API_URL || '';
-const STARTON_BASE_URL: string = process.env.STARTON_BASE_URL || '';
-const STARTON_URL: string = process.env.STARTON_URL || '';
+const DOLPIN_API_URL: string = constants.DOLPIN_API_URL || '';
+const CLOUDINARY_API_URL: string = constants.CLOUDINARY_API_URL || '';
+const PINATA_API_URL: string = constants.PINATA_API_URL || '';
+const STARTON_BASE_URL: string = constants.STARTON_BASE_URL || '';
+const STARTON_URL: string = constants.STARTON_URL || '';
 type CloudinaryConfig = {
     cloud_name: string;
     api_key: string;
@@ -47,9 +48,7 @@ const handleFileUpload = async (config: FileUploadConfig, req: Request, res: Res
             filename: (req.file as any).originalname,
             contentType: (req.file as any).mimetype,
         });
-
         await config.handleFile(formData, req);
-
         res.json();
     } catch (error) {
         console.error(error);
@@ -105,20 +104,22 @@ const startonConfig: FileUploadConfig = {
     },
 };
 
-app.post('/upload/dolpin', upload.single('files'), (req: Request, res: Response) => {
-    handleFileUpload(dolpinConfig, req, res);
-});
+app.post('/upload/file', upload.single('file'), async (req: Request, res: Response) => {
+    const body = JSON.parse(JSON.stringify(req.body));
+    const selectedStorages = JSON.parse(body.selectedStorages);
 
-app.post('/upload/cloudinary', upload.single('file'), (req: Request, res: Response) => {
-    handleFileUpload(cloudinaryConfig, req, res);
-});
+    const storageConfigs = [
+        { value: "Dolpin", config: dolpinConfig },
+        { value: "Cloudinary", config: cloudinaryConfig },
+        { value: "Pinata", config: pinataConfig },
+        { value: "Starton", config: startonConfig }
+    ];
 
-app.post('/upload/pinata', upload.single('file'), (req: Request, res: Response) => {
-    handleFileUpload(pinataConfig, req, res);
-});
-
-app.post('/upload/starton', upload.single('file'), (req: Request, res: Response) => {
-    handleFileUpload(startonConfig, req, res);
+    for (const storage of storageConfigs) {
+        if (selectedStorages.some((s: { value: string; }) => s.value === storage.value)) {
+            await handleFileUpload(storage.config, req, res);
+        }
+    }
 });
 
 const PORT: number = 3001;

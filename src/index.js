@@ -19,17 +19,18 @@ const axios_1 = __importDefault(require("axios"));
 const form_data_1 = __importDefault(require("form-data"));
 const multer_1 = __importDefault(require("multer"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const constants_1 = __importDefault(require("./constants"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({ storage: storage });
-const DOLPIN_API_URL = process.env.DOLPIN_API_URL || '';
-const CLOUDINARY_API_URL = process.env.CLOUDINARY_API_URL || '';
-const PINATA_API_URL = process.env.PINATA_API_URL || '';
-const STARTON_BASE_URL = process.env.STARTON_BASE_URL || '';
-const STARTON_URL = process.env.STARTON_URL || '';
+const DOLPIN_API_URL = constants_1.default.DOLPIN_API_URL || '';
+const CLOUDINARY_API_URL = constants_1.default.CLOUDINARY_API_URL || '';
+const PINATA_API_URL = constants_1.default.PINATA_API_URL || '';
+const STARTON_BASE_URL = constants_1.default.STARTON_BASE_URL || '';
+const STARTON_URL = constants_1.default.STARTON_URL || '';
 const CLOUDINARY_CONFIG = {
     cloud_name: process.env.CLOUDINARY_CONFIG_CLOUD_NAME || '',
     api_key: process.env.CLOUDINARY_CONFIG_API_KEY || '',
@@ -94,18 +95,21 @@ const startonConfig = {
         yield startonApi.post(STARTON_URL, formData, { headers: Object.assign({}, formData.getHeaders()) });
     }),
 };
-app.post('/upload/dolpin', upload.single('files'), (req, res) => {
-    handleFileUpload(dolpinConfig, req, res);
-});
-app.post('/upload/cloudinary', upload.single('file'), (req, res) => {
-    handleFileUpload(cloudinaryConfig, req, res);
-});
-app.post('/upload/pinata', upload.single('file'), (req, res) => {
-    handleFileUpload(pinataConfig, req, res);
-});
-app.post('/upload/starton', upload.single('file'), (req, res) => {
-    handleFileUpload(startonConfig, req, res);
-});
+app.post('/upload/file', upload.single('file'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const body = JSON.parse(JSON.stringify(req.body));
+    const selectedStorages = JSON.parse(body.selectedStorages);
+    const storageConfigs = [
+        { value: "Dolpin", config: dolpinConfig },
+        { value: "Cloudinary", config: cloudinaryConfig },
+        { value: "Pinata", config: pinataConfig },
+        { value: "Starton", config: startonConfig }
+    ];
+    for (const storage of storageConfigs) {
+        if (selectedStorages.some((s) => s.value === storage.value)) {
+            yield handleFileUpload(storage.config, req, res);
+        }
+    }
+}));
 const PORT = 3001;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
